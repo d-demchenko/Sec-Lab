@@ -9,131 +9,140 @@
 
 #define BUF_SIZE 256
 
+char buf[BUF_SIZE];
+
 int main(int argc, char ** argv)
 {    
-     printf("Starting server\n" );
-     int sock, newsock, port;
-     char buf[BUF_SIZE];
-     char outBuff[BUF_SIZE];
-     struct sockaddr_in serv_addr, cli_addr;
-     socklen_t clen;
-     // if (argc < 2) 
-     // {
-     //     fprintf(stderr,"usage: %s <port_number>\n", argv[0]);
-     //     return EXIT_FAILURE;
-     // }
-     
-     sock = socket(AF_INET, SOCK_STREAM, 0);
-
-     if (socket < 0)
-     {
-       printf("socket() failed: %d\n", errno);
-       return EXIT_FAILURE;
-     }
-
-     memset((char *) &serv_addr, 0, sizeof(serv_addr));
-     
-     port = 8080;
-     serv_addr.sin_family = AF_INET;
-     serv_addr.sin_addr.s_addr = INADDR_ANY;
-     serv_addr.sin_port = htons(port);
-
-     if (bind(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
-     {
-       printf("bind() failed: %d\n", errno);
-       return EXIT_FAILURE;
-     }
-     
-     // listen to the socket with max numer of connection
-     listen(sock, 5);
-     while(1){
-     clen = sizeof(cli_addr);
-     // accept - establishing connection for the connection as the response for the client's request
-     // accept returens new socket so old oskcet cna e used to listen to clinets
-     newsock = accept(sock, (struct sockaddr *) &cli_addr, &clen);
-     if (newsock < 0) 
-     {
-       printf("accept() failed: %d\n", errno);
-       return EXIT_FAILURE;
-     }
-
-     // clear buffer 
-     memset(buf, 0, BUF_SIZE);
-     if(recv(newsock, buf, BUF_SIZE, 0)<1){
-        perror("Can't receive");
-        continue;
-     }
-     
-
-    printf("shan we copy: \n\n");
-    int count = 0;
-     char c = buf[count];
-     char lookupFileName[BUF_SIZE];
+    printf("Starting server...\n" );
 
 
-     while ( (buf[count]!=EOF) && (buf[count]!='\n') && (count<BUF_SIZE) ){    
-        printf("%c", buf[count]);
-        lookupFileName[count]=buf[count];
-        count++;        
-     }
-     printf("\n\n");
-     printf("CLIENT: %s\n", buf);
+    char outBuff[BUF_SIZE];
 
 
-     // GET THE NAME OF THE REQUESTED FILE
-     char strBuf[BUF_SIZE];
-     strncpy(strBuf, buf, BUF_SIZE);
-     char * fPath;
-     fPath = strtok(strBuf," ");
+    int sock, newsock, port;    
+    struct sockaddr_in serv_addr, cli_addr;
+    socklen_t clen;
 
-    for (int i = 0; i < 1; ++i)
+    sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (socket < 0)
     {
-          fPath = strtok (NULL, " ");
+      perror("socket failure\n");
+      return EXIT_FAILURE;
     }
 
+    memset((char *) &serv_addr, 0, sizeof(serv_addr));
+    
+    port = 8080;
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    serv_addr.sin_port = htons(port);
 
+    if (bind(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
+    {
+      perror("socket bind failure\n");
+      return EXIT_FAILURE;
+    }
+    
+    // listen to the socket with max numer of connection
+    listen(sock, 5);
 
+    while(1){
+    clen = sizeof(cli_addr);
+    // accept - establishing connection for the connection as the response for the client's request
+    // accept returns new socket so old sokcet can be used to listen to clinets
+    newsock = accept(sock, (struct sockaddr *) &cli_addr, &clen);
+    if (newsock < 0) 
+    {
+      perror("accept failed\n");
+      continue;
+    }
 
-    char *pstr1;
-    pstr1 = &(fPath[1]);
+    // clear buffer 
+    memset(buf, 0, BUF_SIZE);
 
-     // get file
+    if(recv(newsock, buf, BUF_SIZE-1, 0)<1){
+       perror("receive failed");
+       continue;
+    }    
+    printf("request: -%s-\n", buf);
+    
+    // get the name of the requested file
+    char strBuf[sizeof(buf)];
+    memset(strBuf,0,BUF_SIZE);
+    strncpy(strBuf, buf, BUF_SIZE-1);
+    char * fPath;
+    fPath = strtok(strBuf," \n");
+    int cnt = 0;
+    while (fPath != NULL)
+    {      
+        if (cnt++==1)
+        {
+            break;
+        }
+        fPath = strtok(NULL, " ");
+    }
+    printf("Requeseted file: -%s- \n",fPath);
 
+    if (fPath == NULL ){
+         perror("Error opening a file\n");
+         close(newsock);
+         continue;
+    }
 
-
-     FILE *file;
-     file = fopen(pstr1,"r");
+    // get file
+    FILE *file;
+    // remove first character from the path (as it is usually "/") with command &(fPath[1])
     
 
+    int countLetters=0;
+    for (int i = 0; i < strlen(fPath); i++)
+    {
+        if (fPath[i]!='\n' && fPath[i]!='\r' && fPath[i]!=0 && fPath[i]!=' ')
+            countLetters++;            
+    }
+
+    //char *nPath = &(fPath[1]);
+    printf(">>%lu\n", strlen(fPath));
+    printf(">>-%s-\n", fPath);
+
+    // int countLetters=0;
+    // for (int i = 0; i < strlen(nPath); i++)
+    // {
+    //     if (nPath[i]!='\n' && nPath[i]!='\r' && nPath[i]!=0 && nPath[i]!=' ')
+    //         countLetters++;            
+    // }
+
+    // char word[countLetters];
+    // memset(word, 0, countLetters);
+    // strncpy(word,nPath,countLetters);    
+    // printf("-%s-\n", word);
+
+    file = fopen(fPath,"r");
     if (file == NULL ){
-         printf("Error opening a file\n");
-         return EXIT_FAILURE;
-     }
+         perror("Error opening a file\n");
+         close(newsock);
+         continue;
+    }
+    // clear buffer
+    memset(outBuff,0,BUF_SIZE);
 
-     memset(outBuff,0,BUF_SIZE);
-     printf("File content: \n\n" );
-
-     c = fgetc(file);
-     count = 0;
-     while ( (c!=EOF) && (count<BUF_SIZE) ){
-        printf("%c", c);
+    char c = fgetc(file);
+    int count = 0;
+    // write file content to the file into outBufer
+    while ( (c!=EOF) && (count<BUF_SIZE) ){
         outBuff[count]=c;
         count++;
         c=fgetc(file);
-     }
-     printf("\n\n End of file \n" );
+    }
 
-
-     if(send(newsock, outBuff, BUF_SIZE,0)==-1){
-        perror("Can't send");
+    if(send(newsock, outBuff, BUF_SIZE,0)==-1){
+        perror("send failure");
         continue;
-     }
+    }
 
-     close(newsock);
-     printf("Client gone");
+    close(newsock);
+    printf("Client gone");
  }
-     // close(sock);
-     // printf("\nStopping server..\n");
 }
 
 
