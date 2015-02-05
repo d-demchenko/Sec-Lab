@@ -10,6 +10,17 @@
 #define BUF_SIZE 256
 
 char buf[BUF_SIZE];
+char error_404[] = "HTTP/1.1 404 Not Found\n"
+      "Content-type: text/html\n"
+      "\n"
+      "<html>\n"
+      " <body>\n"
+      "  <h1>Error 404</h1>\n"
+      "  <h2> Not Found </h2> \n"
+      "  <p>The requested URL was not found on this server.</p>\n"
+      " </body>\n"
+      "</html>\n";
+;
 
 int main(int argc, char ** argv)
 {    
@@ -73,6 +84,7 @@ int main(int argc, char ** argv)
         
         if (fPath == NULL ){
             perror("Error opening a file\n");
+            send(newsock, error_404, sizeof(error_404),0);
             close(newsock);
             continue;
         }
@@ -87,6 +99,7 @@ int main(int argc, char ** argv)
        file = fopen(trimmedPath,"r");
        if (file == NULL ){
             perror("Error opening a file\n");
+            send(newsock, error_404, sizeof(error_404),0);
             close(newsock);
             continue;
        }
@@ -112,16 +125,3 @@ int main(int argc, char ** argv)
        printf("Client gone");
  }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

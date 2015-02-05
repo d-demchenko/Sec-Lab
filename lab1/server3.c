@@ -1,15 +1,22 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
+#include <errno.h>
+#include <strings.h>
 #include <sys/types.h> 
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <err.h>
- 
-// This is HTML responce on the 404 not found error
-char response[] = "HTTP/1.1 404 Not Found\n"
+#include <unistd.h>
+
+#define BUF_SIZE 10
+#define STRING_SIZE 20
+#define OUT_BUF_SIZE 256
+
+
+//char buf[BUF_SIZE];
+//char *buf;
+//int *accessGroup;
+
+char error_404[] = "HTTP/1.1 404 Not Found\n"
       "Content-type: text/html\n"
       "\n"
       "<html>\n"
@@ -21,64 +28,125 @@ char response[] = "HTTP/1.1 404 Not Found\n"
       "</html>\n";
 ;
 
-// Actual length of the buffer
-char buf[512];
 
-//use send() & receive() instead of read() and write()
- 
-int main()
-{
-  int one = 1, client_fd, request_len;
+int main(int argc, char ** argv)
+{   
+    // char *buf = (char*) malloc(sizeof(char)*BUF_SIZE);
+    // int *accessGroup = (char*)malloc(1);
+    // *accessGroup = 'g';
 
-  // Creating two structures of instance sockaddr_in
-  // in order to implement web socket connection
-  struct sockaddr_in serv_addr, cli_addr;
-  socklen_t sin_len = sizeof(cli_addr);
-  
-  // Creating & init a new socket
-  int sock = socket(AF_INET, SOCK_STREAM, 0);
-  if (sock < 0)
-    err(1, "can't open socket");
- 
-  setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int));
- 
-  int port = 8080;
-  //Setting up for IPv4
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_addr.s_addr = INADDR_ANY;
-  serv_addr.sin_port = htons(port);
- 
-  //Binding and checking it (binding socket to the local port
-  if (bind(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) == -1) {
-    close(sock);
-    err(1, "Can't bind");
-  }
- 
-  // Listener for the specified socket and specified queue length
-  listen(sock, 5);
-  while (1) {
-    // accept returns new variable, which represents a new port in order to communicate
-    // with newly connected client. the old socket is now carrying on listening and handling
-    // next clients waiting in the queue
-    client_fd = accept(sock, (struct sockaddr *) &cli_addr, &sin_len);
-    printf("got connection\n");
- 
-    // Handling accept returning -1 (in case of errors)
-    if (client_fd == -1) {
-      perror("Can't accept");
-      continue;
+    char *buf = (char*) malloc(sizeof(char)*BUF_SIZE);
+    char *accessGroup = (char*)malloc(sizeof(char));
+    *accessGroup = 'u';
+
+    char *pageForbiden = "<html><body><h1>You have no access</h1></body></html>";
+    char *pageWelcome = "<html><body><h1>Access granted</h1></body></html>";
+    printf("Starting server...\n" );
+
+    //printf("addr difference = %ld\n", ((long)&accessGroup)-((long)&buf[0]));
+    printf("%p,%p,%p\n",accessGroup, buf, buf+16);
+    printf("%04x\n", *accessGroup);
+    //char *p1 = &buf[0];
+    // int *p2 = &accessGroup;
+    //int x = p1-p2;
+    
+    // for (int i = -300; i < x+300; ++i)
+    // {
+    //   printf("%c\n", (char) *(p2+i)) ;
+    // }
+
+    char outBuff[OUT_BUF_SIZE];
+
+    int sock, newsock, port;    
+    struct sockaddr_in serv_addr, cli_addr;
+    socklen_t clen;
+
+    sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (socket < 0)
+    {
+      perror("socket failure\n");
+      return EXIT_FAILURE;
+    }
+
+    memset((char *) &serv_addr, 0, sizeof(serv_addr));
+    
+    port = 8080;
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    serv_addr.sin_port = htons(port);
+
+    if (bind(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
+    {
+      perror("socket bind failure\n");
+      return EXIT_FAILURE;
     }
     
-    request_len = recv(client_fd, buf, sizeof(buf), 0);
-    if(request_len<1){// Including -1 and 0
-      // Receive message is fault
-      // Skip the current loop iteration
-      perror("Can't receive");
-      continue;
-    }
+    // listen to the socket with max numer of connection
+    listen(sock, 5);
 
-    //write(client_fd, response, sizeof(response) - 1); /*-1:'\0'*/
-    send(client_fd, response, sizeof(response), 0);
-    close(client_fd);
-  }
+    while(1){
+        clen = sizeof(cli_addr);
+        // accept - establishing connection for the connection as the response for the client's request
+        // accept returns new socket so old sokcet can be used to listen to clinets
+        newsock = accept(sock, (struct sockaddr *) &cli_addr, &clen);
+        if (newsock < 0) 
+        {
+            perror("accept failed\n");
+            continue;
+        }
+    
+        // clear buffer 
+        memset(buf, 0, BUF_SIZE);
+        *accessGroup='u';
+
+        if(recv(newsock, buf, BUF_SIZE<<1, 0)<1){
+           perror("receive failed");
+           continue;
+        }
+
+        // checking addresses
+        for (int i = 0-10; i < BUF_SIZE+10; ++i)
+        {
+            printf("%p,%04x,%c\n", (&buf[0])+i, *(&buf[0])+i,*(&buf[0]+i) );
+        }
+        printf("access addr: %p,%04x,%c\n", &accessGroup,*accessGroup,*accessGroup);
+
+       // printf("addr difference = %ld\n", &accessGroup-&buf[BUF_SIZE]);
+
+        printf("buf size: [%lu]\n", strlen(buf));
+        printf("buf: [%s]\n", buf);
+        
+        char fPath[BUF_SIZE];
+        memset(fPath, 0, BUF_SIZE);
+        // get seond parameter (filename)
+        sscanf(buf,"%*s %s",fPath);
+        
+        if (fPath == NULL ){
+            perror("Error opening a file\n");
+            send(newsock, error_404, sizeof(error_404),0);
+            close(newsock);
+            continue;
+        }
+
+        printf("selected file: %s\n", fPath);
+
+        // clear buffer
+        memset(outBuff,0,OUT_BUF_SIZE);       
+
+        if (*accessGroup=='a')
+        {
+            strncpy(outBuff,pageWelcome,strlen(pageWelcome));
+        }else{
+            strncpy(outBuff,pageForbiden,strlen(pageForbiden));
+        }        
+              
+
+        if(send(newsock, outBuff, OUT_BUF_SIZE,0)==-1){
+            perror("send failure");
+            continue;
+        }
+
+        close(newsock);
+        printf("Client gone");
+ }
 }

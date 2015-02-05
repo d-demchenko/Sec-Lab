@@ -1,15 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
+#include <errno.h>
+#include <strings.h>
 #include <sys/types.h> 
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <err.h>
- 
-// This is HTML responce on the 404 not found error
-char response[] = "HTTP/1.1 404 Not Found\n"
+#include <unistd.h>
+#define PATH_MAX 4096
+#define BUF_SIZE 256
+
+char buf[BUF_SIZE];
+char* pwd;
+char pwd_buff[PATH_MAX + 1];
+char error_404[] = "HTTP/1.1 404 Not Found\n"
       "Content-type: text/html\n"
       "\n"
       "<html>\n"
@@ -21,64 +24,118 @@ char response[] = "HTTP/1.1 404 Not Found\n"
       "</html>\n";
 ;
 
-// Actual length of the buffer
-char buf[512];
+int main(int argc, char ** argv)
+{    
+    printf("Starting server...\n" );
 
-//use send() & receive() instead of read() and write()
- 
-int main()
-{
-  int one = 1, client_fd, request_len;
+    char outBuff[BUF_SIZE];
 
-  // Creating two structures of instance sockaddr_in
-  // in order to implement web socket connection
-  struct sockaddr_in serv_addr, cli_addr;
-  socklen_t sin_len = sizeof(cli_addr);
-  
-  // Creating & init a new socket
-  int sock = socket(AF_INET, SOCK_STREAM, 0);
-  if (sock < 0)
-    err(1, "can't open socket");
- 
-  setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int));
- 
-  int port = 8080;
-  //Setting up for IPv4
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_addr.s_addr = INADDR_ANY;
-  serv_addr.sin_port = htons(port);
- 
-  //Binding and checking it (binding socket to the local port
-  if (bind(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) == -1) {
-    close(sock);
-    err(1, "Can't bind");
-  }
- 
-  // Listener for the specified socket and specified queue length
-  listen(sock, 5);
-  while (1) {
-    // accept returns new variable, which represents a new port in order to communicate
-    // with newly connected client. the old socket is now carrying on listening and handling
-    // next clients waiting in the queue
-    client_fd = accept(sock, (struct sockaddr *) &cli_addr, &sin_len);
-    printf("got connection\n");
- 
-    // Handling accept returning -1 (in case of errors)
-    if (client_fd == -1) {
-      perror("Can't accept");
-      continue;
+    int sock, newsock, port;    
+    struct sockaddr_in serv_addr, cli_addr;
+    socklen_t clen;
+
+    sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (socket < 0)
+    {
+      perror("socket failure\n");
+      return EXIT_FAILURE;
+    }
+
+    // Fetching the full address of the current location 
+    // (as pwd command on UNIX)
+    pwd = getcwd( pwd_buff, PATH_MAX + 1 );
+    printf("Curent server location is: %s\n", pwd);
+
+    memset((char *) &serv_addr, 0, sizeof(serv_addr));
+    
+    port = 8080;
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    serv_addr.sin_port = htons(port);
+
+    if (bind(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
+    {
+      perror("socket bind failure\n");
+      return EXIT_FAILURE;
     }
     
-    request_len = recv(client_fd, buf, sizeof(buf), 0);
-    if(request_len<1){// Including -1 and 0
-      // Receive message is fault
-      // Skip the current loop iteration
-      perror("Can't receive");
-      continue;
-    }
+    // listen to the socket with max number of connections in the queue of 5
+    listen(sock, 5);
 
-    //write(client_fd, response, sizeof(response) - 1); /*-1:'\0'*/
-    send(client_fd, response, sizeof(response), 0);
-    close(client_fd);
-  }
+    while(1){
+        clen = sizeof(cli_addr);
+        // accept - establishing connection for the connection as the response for the client's request
+        // accept returns new socket so old sokcet can be used to listen to clinets
+        newsock = accept(sock, (struct sockaddr *) &cli_addr, &clen);
+        if (newsock < 0) 
+        {
+            perror("accept failed\n");
+            continue;
+        }
+    
+        // clear buffer 
+        memset(buf, 0, BUF_SIZE);
+        if(recv(newsock, buf, BUF_SIZE-1, 0)<1){
+           perror("receive failed");
+           continue;
+        }
+        printf("\n=========\n");
+        printf("buf size: [%lu]\n", strlen(buf));
+        printf("buf: [%s]\n", buf);
+        
+        char fPath[BUF_SIZE];
+        memset(fPath, 0, BUF_SIZE);
+        // get seond parameter (filename)
+        sscanf(buf,"%*s %s",fPath);
+        
+        if (fPath == NULL ){
+            perror("Error opening a file\n");
+            send(newsock, error_404, sizeof(error_404),0);
+            close(newsock);
+            continue;
+        }
+
+       // get file
+       FILE *file;
+
+       // Resolving with /.. in UNIX
+       // As we don't want user to get an access 
+       // any file outside the directory
+       // Only internal files (and files of children) are allowed
+
+       char *ptr;
+       char ptr_buff[PATH_MAX + 1];
+       ptr = realpath(fPath,ptr_buff);
+       // Concatinating realPath of the file and current directory path
+       strcat(pwd, ptr_buff);
+       
+       printf("selected file: %s\n", pwd);
+       file = fopen(pwd,"r");
+       if (file == NULL ){
+            perror("Error opening a file\n");
+            send(newsock, error_404, sizeof(error_404),0);
+            close(newsock);
+            continue;
+       }
+       
+       // clear buffer
+       memset(outBuff,0,BUF_SIZE);
+
+       char c = fgetc(file);
+       int count = 0;
+       // write file content to the file into outBufer
+       while ( (c!=EOF) && (count<BUF_SIZE) ){
+           outBuff[count]=c;
+           count++;
+           c=fgetc(file);
+       }
+
+       if(send(newsock, outBuff, BUF_SIZE,0)==-1){
+           perror("send failure");
+           continue;
+       }
+
+       close(newsock);
+       printf("Client gone");
+ }
 }

@@ -1,28 +1,30 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
-    int t1=-1;
-    int t2=-2;  
-    // char buff[6];
-    char *buff2;// = (char*) malloc(sizeof(char)*6);
-    // char *buff = (char*) malloc(sizeof(char)*6);
-    int t3=-3;
-    int pass = 0;
-    int t4=-4;
-
+//gcc -fstack-protector -masm=intel -S test.c
+    
+    
 
 int main(void)
 {
-   *buff2 = (char*) malloc(sizeof(char)*6);
+    char *getter;
+    char buff[2];
+    // char *buff2// = (char*) malloc(sizeof(char)*6);
+    // char *buff = (char*) malloc(sizeof(char)*6);
+    int pass = 0;
+    
+    getter = (char*) malloc(sizeof(char)*6);
     printf("\n Enter the password : \n");
-    gets(buff);
-    printf("%d + %s \n", pass, buff);
+    printf("%lu + %s \n", sizeof(buff), buff);
+    gets(getter);
+    strcpy(buff, getter);
+    printf("============\nPassword is %d \n============\n",pass);
+    
+    printf("%lu + %s \n", sizeof(buff), buff);
 
     // strcpy(buff2, buff);
 
-    printf("%d + %s", pass, buff);
-    printf("%d + %d + %d + %d", t1,t2,t3,t4);
+    printf("%lu + %s\n", sizeof(buff), buff);
 
 
     //buff = &buff2;
