@@ -35,7 +35,7 @@ int main(int argc, char ** argv)
     // int *accessGroup = (char*)malloc(1);
     // *accessGroup = 'g';
 
-    char *buf = (char*) malloc(sizeof(char)*BUF_SIZE);
+    char *buf = (char*)malloc(sizeof(char)*BUF_SIZE);
     char *accessGroup = (char*)malloc(sizeof(char));
     *accessGroup = 'u';
 
@@ -44,8 +44,8 @@ int main(int argc, char ** argv)
     printf("Starting server...\n" );
 
     //printf("addr difference = %ld\n", ((long)&accessGroup)-((long)&buf[0]));
-    printf("%p,%p,%p\n",accessGroup, buf, buf+16);
-    printf("%04x\n", *accessGroup);
+    // printf("%p,%p,%p\n",accessGroup, buf, buf+16);
+    // printf("%04x\n", *accessGroup);
     //char *p1 = &buf[0];
     // int *p2 = &accessGroup;
     //int x = p1-p2;
@@ -105,16 +105,16 @@ int main(int argc, char ** argv)
         }
 
         // checking addresses
-        for (int i = 0-10; i < BUF_SIZE+10; ++i)
-        {
-            printf("%p,%04x,%c\n", (&buf[0])+i, *(&buf[0])+i,*(&buf[0]+i) );
-        }
-        printf("access addr: %p,%04x,%c\n", &accessGroup,*accessGroup,*accessGroup);
+        // for (int i = 0-10; i < BUF_SIZE+10; ++i)
+        // {
+        //     printf("%p,%04x,%c\n", (&buf[0])+i, *(&buf[0])+i,*(&buf[0]+i) );
+        // }
+        // printf("access addr: %p,%04x,%c\n", &accessGroup,*accessGroup,*accessGroup);
 
-       // printf("addr difference = %ld\n", &accessGroup-&buf[BUF_SIZE]);
+        // printf("addr difference = %ld\n", &accessGroup-&buf[BUF_SIZE]);
 
-        printf("buf size: [%lu]\n", strlen(buf));
-        printf("buf: [%s]\n", buf);
+        //printf("buf size: [%lu]\n", strlen(buf));
+        //printf("buf: [%s]\n", buf);
         
         char fPath[BUF_SIZE];
         memset(fPath, 0, BUF_SIZE);
