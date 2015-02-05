@@ -41,11 +41,7 @@ int main(int argc, char ** argv)
       return EXIT_FAILURE;
     }
 
-    // Fetching the full address of the current location 
-    // (as pwd command on UNIX)
-    pwd = getcwd( pwd_buff, PATH_MAX + 1 );
-    printf("Curent server location is: %s\n", pwd);
-
+    
     memset((char *) &serv_addr, 0, sizeof(serv_addr));
     
     port = 8080;
@@ -63,6 +59,11 @@ int main(int argc, char ** argv)
     listen(sock, 5);
 
     while(1){
+        // Fetching the full address of the current location 
+        // (as pwd command on UNIX)
+        pwd = getcwd( pwd_buff, PATH_MAX + 1 );
+        printf("Curent server location is: %s\n", pwd);
+
         clen = sizeof(cli_addr);
         // accept - establishing connection for the connection as the response for the client's request
         // accept returns new socket so old sokcet can be used to listen to clinets
