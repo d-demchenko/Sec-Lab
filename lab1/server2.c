@@ -70,12 +70,14 @@ int main(int argc, char ** argv)
         memset(fPath, 0, BUF_SIZE);
         // get seond parameter (filename)
         sscanf(buf,"%*s %s",fPath);
-    
+        
         if (fPath == NULL ){
             perror("Error opening a file\n");
             close(newsock);
             continue;
         }
+
+        printf("selected file: %s\n", fPath);
 
        // get file
        FILE *file;
