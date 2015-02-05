@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #define BUF_SIZE 10
+#define STRING_SIZE 20
 #define OUT_BUF_SIZE 256
 
 
@@ -32,7 +33,6 @@ int main(int argc, char ** argv)
     char *pageForbiden = "<html><body><h1>You have no access</h1></body></html>";
     char *pageWelcome = "<html><body><h1>Access granted</h1></body></html>";
     printf("Starting server...\n" );
-
 
     //printf("addr difference = %ld\n", ((long)&accessGroup)-((long)&buf[0]));
     printf("%p,%p,%p\n",accessGroup, buf, buf+16);
@@ -93,8 +93,8 @@ int main(int argc, char ** argv)
         // clear buffer 
         memset(buf, 0, BUF_SIZE);
         *accessGroup='u';
-        
-        if(recv(newsock, buf, OUT_BUF_SIZE, 0)<1){
+
+        if(recv(newsock, buf, BUF_SIZE<<1, 0)<1){
            perror("receive failed");
            continue;
         }
