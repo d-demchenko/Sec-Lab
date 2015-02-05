@@ -47,101 +47,67 @@ int main(int argc, char ** argv)
     listen(sock, 5);
 
     while(1){
-    clen = sizeof(cli_addr);
-    // accept - establishing connection for the connection as the response for the client's request
-    // accept returns new socket so old sokcet can be used to listen to clinets
-    newsock = accept(sock, (struct sockaddr *) &cli_addr, &clen);
-    if (newsock < 0) 
-    {
-      perror("accept failed\n");
-      continue;
-    }
-
-    // clear buffer 
-    memset(buf, 0, BUF_SIZE);
-
-    if(recv(newsock, buf, BUF_SIZE-1, 0)<1){
-       perror("receive failed");
-       continue;
-    }    
-    printf("request: -%s-\n", buf);
-    
-    // get the name of the requested file
-    char strBuf[sizeof(buf)];
-    memset(strBuf,0,BUF_SIZE);
-    strncpy(strBuf, buf, BUF_SIZE-1);
-    char * fPath;
-    fPath = strtok(strBuf," \n");
-    int cnt = 0;
-    while (fPath != NULL)
-    {      
-        if (cnt++==1)
+        clen = sizeof(cli_addr);
+        // accept - establishing connection for the connection as the response for the client's request
+        // accept returns new socket so old sokcet can be used to listen to clinets
+        newsock = accept(sock, (struct sockaddr *) &cli_addr, &clen);
+        if (newsock < 0) 
         {
-            break;
+            perror("accept failed\n");
+            continue;
         }
-        fPath = strtok(NULL, " ");
-    }
-    printf("Requeseted file: -%s- \n",fPath);
-
-    if (fPath == NULL ){
-         perror("Error opening a file\n");
-         close(newsock);
-         continue;
-    }
-
-    // get file
-    FILE *file;
-    // remove first character from the path (as it is usually "/") with command &(fPath[1])
     
+        // clear buffer 
+        memset(buf, 0, BUF_SIZE);
+        if(recv(newsock, buf, BUF_SIZE-1, 0)<1){
+           perror("receive failed");
+           continue;
+        }    
+        printf("buf size: [%lu]\n", strlen(buf));
+        printf("buf: [%s]\n", buf);
+        
+        char fPath[BUF_SIZE];
+        memset(fPath, 0, BUF_SIZE);
+        // get seond parameter (filename)
+        sscanf(buf,"%*s %s",fPath);
+    
+        if (fPath == NULL ){
+            perror("Error opening a file\n");
+            close(newsock);
+            continue;
+        }
 
-    int countLetters=0;
-    for (int i = 0; i < strlen(fPath); i++)
-    {
-        if (fPath[i]!='\n' && fPath[i]!='\r' && fPath[i]!=0 && fPath[i]!=' ')
-            countLetters++;            
-    }
+       // get file
+       FILE *file;
 
-    //char *nPath = &(fPath[1]);
-    printf(">>%lu\n", strlen(fPath));
-    printf(">>-%s-\n", fPath);
+       // removed 1st symbol (which is '/')
+       char *trimmedPath = &(fPath[1]);
+       file = fopen(trimmedPath,"r");
+       if (file == NULL ){
+            perror("Error opening a file\n");
+            close(newsock);
+            continue;
+       }
 
-    // int countLetters=0;
-    // for (int i = 0; i < strlen(nPath); i++)
-    // {
-    //     if (nPath[i]!='\n' && nPath[i]!='\r' && nPath[i]!=0 && nPath[i]!=' ')
-    //         countLetters++;            
-    // }
+       // clear buffer
+       memset(outBuff,0,BUF_SIZE);
 
-    // char word[countLetters];
-    // memset(word, 0, countLetters);
-    // strncpy(word,nPath,countLetters);    
-    // printf("-%s-\n", word);
+       char c = fgetc(file);
+       int count = 0;
+       // write file content to the file into outBufer
+       while ( (c!=EOF) && (count<BUF_SIZE) ){
+           outBuff[count]=c;
+           count++;
+           c=fgetc(file);
+       }
 
-    file = fopen(fPath,"r");
-    if (file == NULL ){
-         perror("Error opening a file\n");
-         close(newsock);
-         continue;
-    }
-    // clear buffer
-    memset(outBuff,0,BUF_SIZE);
+       if(send(newsock, outBuff, BUF_SIZE,0)==-1){
+           perror("send failure");
+           continue;
+       }
 
-    char c = fgetc(file);
-    int count = 0;
-    // write file content to the file into outBufer
-    while ( (c!=EOF) && (count<BUF_SIZE) ){
-        outBuff[count]=c;
-        count++;
-        c=fgetc(file);
-    }
-
-    if(send(newsock, outBuff, BUF_SIZE,0)==-1){
-        perror("send failure");
-        continue;
-    }
-
-    close(newsock);
-    printf("Client gone");
+       close(newsock);
+       printf("Client gone");
  }
 }
 
